@@ -1,0 +1,121 @@
+# Staging Environment Configuration
+
+environment: staging
+
+proxmox:
+  host: "192.168.1.100"
+  port: 8006
+  node: "pve"
+  
+network:
+  bridge: "vmbr1"
+  subnet: "10.1.0.0/24"
+  gateway: "10.1.0.1"
+  
+lxc:
+  panel:
+    id: 210
+    hostname: "pterodactyl-panel-staging"
+    ip: "10.1.0.2/24"
+    cores: 2
+    memory: 2048  # MB - Reduced for staging
+    swap: 512
+    disk_size: 15  # GB
+    storage: "local-lvm"
+    template: "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+    privileged: true
+    
+  wings:
+    id: 211
+    hostname: "pterodactyl-wings-staging"
+    ip: "10.1.0.3/24"
+    cores: 2
+    memory: 4096  # MB - Reduced for staging
+    swap: 512
+    disk_size: 30  # GB
+    storage: "local-lvm"
+    template: "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+    privileged: true
+    nesting: true
+    features: "nesting=1,keyctl=1"
+
+domains:
+  panel: "panel-staging.trostrum.com"
+  wings: "node-staging.trostrum.com"
+
+pterodactyl:
+  panel:
+    version: "latest"
+    db_name: "pterodactyl_staging"
+    db_user: "pterodactyl_staging"
+    app_env: "staging"
+    app_debug: true  # Enable debug in staging
+    timezone: "America/New_York"
+    
+  wings:
+    version: "latest"
+    port: 8080
+    sftp_port: 2022
+    debug: true  # Enable debug in staging
+
+ports:
+  game_servers:
+    start: 8777
+    end: 8877
+  
+  nat_rules:
+    - external: 8443
+      internal: 10.1.0.2
+      internal_port: 443
+      protocol: tcp
+      description: "Staging Panel HTTPS"
+      
+    - external: 8880
+      internal: 10.1.0.2
+      internal_port: 80
+      protocol: tcp
+      description: "Staging Panel HTTP"
+      
+    - external: 9080
+      internal: 10.1.0.3
+      internal_port: 8080
+      protocol: tcp
+      description: "Staging Wings API"
+      
+    - external: 9022
+      internal: 10.1.0.3
+      internal_port: 2022
+      protocol: tcp
+      description: "Staging Wings SFTP"
+      
+    - external_range: "8777:8877"
+      internal: 10.1.0.3
+      internal_range: "8777:8877"
+      protocol: "tcp,udp"
+      description: "Staging game server ports"
+
+backup:
+  enabled: true
+  schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+  retention_days: 3
+  storage_path: "/var/backups/pterodactyl-staging"
+  include:
+    - panel_database
+    - panel_config
+    - wings_config
+  
+  s3:
+    enabled: false
+
+monitoring:
+  enabled: true
+  check_interval: 600  # seconds
+  health_endpoints:
+    - "https://panel-staging.trostrum.com:8443"
+    - "https://node-staging.trostrum.com:9080"
+
+ssl:
+  provider: "certbot"
+  certbot:
+    email: "admin@trostrum.com"
+    challenge: "http"

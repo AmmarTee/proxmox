@@ -1,0 +1,124 @@
+# Production Environment Configuration
+
+environment: production
+
+proxmox:
+  host: "192.168.1.100"
+  port: 8006
+  node: "pve"
+  
+network:
+  bridge: "vmbr1"
+  subnet: "10.0.0.0/24"
+  gateway: "10.0.0.1"
+  
+lxc:
+  panel:
+    id: 200
+    hostname: "pterodactyl-panel"
+    ip: "10.0.0.2/24"
+    cores: 2
+    memory: 4096  # MB
+    swap: 512
+    disk_size: 20  # GB
+    storage: "local-lvm"
+    template: "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+    privileged: true
+    
+  wings:
+    id: 201
+    hostname: "pterodactyl-wings"
+    ip: "10.0.0.3/24"
+    cores: 4
+    memory: 8192  # MB
+    swap: 1024
+    disk_size: 50  # GB
+    storage: "local-lvm"
+    template: "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+    privileged: true
+    nesting: true  # Required for Docker
+    features: "nesting=1,keyctl=1"
+
+domains:
+  panel: "panel.trostrum.com"
+  wings: "node.trostrum.com"
+
+pterodactyl:
+  panel:
+    version: "latest"  # or specific version like "v1.11.5"
+    db_name: "pterodactyl"
+    db_user: "pterodactyl"
+    app_env: "production"
+    app_debug: false
+    timezone: "America/New_York"
+    
+  wings:
+    version: "latest"  # or specific version like "v1.11.5"
+    port: 8080
+    sftp_port: 2022
+    debug: false
+
+ports:
+  game_servers:
+    start: 7777
+    end: 7877
+  
+  nat_rules:
+    - external: 443
+      internal: 10.0.0.2
+      internal_port: 443
+      protocol: tcp
+      description: "Panel HTTPS"
+      
+    - external: 80
+      internal: 10.0.0.2
+      internal_port: 80
+      protocol: tcp
+      description: "Panel HTTP (Certbot)"
+      
+    - external: 8080
+      internal: 10.0.0.3
+      internal_port: 8080
+      protocol: tcp
+      description: "Wings API"
+      
+    - external: 2022
+      internal: 10.0.0.3
+      internal_port: 2022
+      protocol: tcp
+      description: "Wings SFTP"
+      
+    - external_range: "7777:7877"
+      internal: 10.0.0.3
+      internal_range: "7777:7877"
+      protocol: "tcp,udp"
+      description: "Game server ports"
+
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention_days: 7
+  storage_path: "/var/backups/pterodactyl"
+  include:
+    - panel_database
+    - panel_config
+    - wings_config
+    - game_server_data
+  
+  s3:
+    enabled: false
+    bucket: ""
+    region: ""
+
+monitoring:
+  enabled: true
+  check_interval: 300  # seconds
+  health_endpoints:
+    - "https://panel.trostrum.com"
+    - "https://node.trostrum.com:8080"
+
+ssl:
+  provider: "certbot"  # certbot or manual
+  certbot:
+    email: "admin@trostrum.com"
+    challenge: "http"  # http or dns

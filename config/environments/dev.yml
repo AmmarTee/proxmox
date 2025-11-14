@@ -1,0 +1,114 @@
+# Development Environment Configuration
+
+environment: dev
+
+proxmox:
+  host: "192.168.1.100"
+  port: 8006
+  node: "pve"
+  
+network:
+  bridge: "vmbr1"
+  subnet: "10.2.0.0/24"
+  gateway: "10.2.0.1"
+  
+lxc:
+  panel:
+    id: 220
+    hostname: "pterodactyl-panel-dev"
+    ip: "10.2.0.2/24"
+    cores: 1
+    memory: 2048  # MB - Minimal for dev
+    swap: 256
+    disk_size: 10  # GB
+    storage: "local-lvm"
+    template: "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+    privileged: true
+    
+  wings:
+    id: 221
+    hostname: "pterodactyl-wings-dev"
+    ip: "10.2.0.3/24"
+    cores: 2
+    memory: 2048  # MB - Minimal for dev
+    swap: 256
+    disk_size: 20  # GB
+    storage: "local-lvm"
+    template: "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+    privileged: true
+    nesting: true
+    features: "nesting=1,keyctl=1"
+
+domains:
+  panel: "panel-dev.trostrum.local"
+  wings: "node-dev.trostrum.local"
+
+pterodactyl:
+  panel:
+    version: "latest"
+    db_name: "pterodactyl_dev"
+    db_user: "pterodactyl_dev"
+    app_env: "development"
+    app_debug: true
+    timezone: "America/New_York"
+    
+  wings:
+    version: "latest"
+    port: 8080
+    sftp_port: 2022
+    debug: true
+
+ports:
+  game_servers:
+    start: 9777
+    end: 9877
+  
+  nat_rules:
+    - external: 9443
+      internal: 10.2.0.2
+      internal_port: 443
+      protocol: tcp
+      description: "Dev Panel HTTPS"
+      
+    - external: 9880
+      internal: 10.2.0.2
+      internal_port: 80
+      protocol: tcp
+      description: "Dev Panel HTTP"
+      
+    - external: 10080
+      internal: 10.2.0.3
+      internal_port: 8080
+      protocol: tcp
+      description: "Dev Wings API"
+      
+    - external: 10022
+      internal: 10.2.0.3
+      internal_port: 2022
+      protocol: tcp
+      description: "Dev Wings SFTP"
+      
+    - external_range: "9777:9877"
+      internal: 10.2.0.3
+      internal_range: "9777:9877"
+      protocol: "tcp,udp"
+      description: "Dev game server ports"
+
+backup:
+  enabled: false  # Disabled in dev
+  schedule: ""
+  retention_days: 1
+  storage_path: "/var/backups/pterodactyl-dev"
+  
+  s3:
+    enabled: false
+
+monitoring:
+  enabled: false  # Disabled in dev
+  check_interval: 0
+
+ssl:
+  provider: "manual"  # Self-signed certs for dev
+  certbot:
+    email: ""
+    challenge: ""
